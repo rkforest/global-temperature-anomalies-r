@@ -1,0 +1,74 @@
+---
+title: "Analysis of Global Temperature Anomalies (using R)"
+subtitle: "Part 2: Gridded Monthly Temperature Anomalies"
+author: "Rick Forest"
+date: 6/12/25
+toc: true
+number-sections: true
+
+format: 
+  html:
+    code-fold: false
+    code-tools: true
+---
+
+## Project Setup
+
+### Load Packages
+
+```{r}
+#| label: load-packages
+#| echo: true
+
+#suppressMessages(library(tidyverse))
+library(ncdf4)
+suppressMessages(library(R.utils)) # to unzip gzip file
+#suppressMessages(library(sf)) 
+#suppressMessages(library("rnaturalearth"))
+```
+
+### Create directories
+
+```{r}
+#| label: create-directories
+#| echo: false
+
+dir.create(file.path("data", "raw", "netcdf"), showWarnings = FALSE)
+dir.create(file.path("data", "transformed", "gridded"), showWarnings = FALSE)
+```
+
+### Initialize directories
+
+```{r}
+#| label: initialize-directories
+#| echo: false
+
+status <- file.remove(list.files(file.path("data", "raw", "netcdf"), full.names=TRUE))
+
+status <- file.remove(list.files(file.path("data", "transformed", "gridded"), full.names=TRUE))
+```
+
+### Create paths for files on NASA website
+
+```{r}
+#| label: create-paths
+#| echo: true
+
+netcdf_url = "https://data.giss.nasa.gov/pub/gistemp/"
+netcdf_file_name <- "gistemp1200_GHCNv4_ERSSTv5.nc"
+```
+
+## Download and unzip netcdf file
+
+```{r}
+#| label: download-netcdf
+#| echo: true
+
+netcdf_zipped_file_name = paste(netcdf_file_name,".gz", sep = "")
+netcdf_zipped_file_path = paste(netcdf_url, netcdf_zipped_file_name, sep = "")   
+
+netcdf_local_save_path <- file.path("data", "raw", "netcdf", netcdf_zipped_file_name)
+download.file(netcdf_zipped_file_path, netcdf_local_save_path, mode = "wb")
+netcdf_unzipped_file <- R.utils::gunzip(netcdf_local_save_path)
+
+```

@@ -1,0 +1,152 @@
+---
+title: "Untitled"
+format: html
+---
+
+#### Variables
+
+```{r}
+continents <-  c("Africa", "Antartica", "Asia", "Europe",
+                 "North America", "Oceania", "South America")
+mollweide_crs <- "+proj=moll +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m" 
+```
+
+
+```{r}
+fn_create_grid_polygon <- 
+  function(nelat, nelng, swlat, swlng) {
+    m <- matrix(c(swlng, nelng, nelng, swlng, swlng,
+                  swlat, swlat, nelat, nelat, swlat), nrow = 5)
+    return(st_polygon(list(m)))
+  } 
+```
+
+## Transform gridded data
+
+Use rnaturalearth country polygons to build continent multipolygons
+
+```{r}
+countries_sf <- ne_countries()
+colnames(countries_sf)
+continents_sf <- countries_sf |> 
+  select(continent) |> 
+  filter(continent %in% continents) |> 
+  st_transform( "+proj=eqc") |> # convert from spherical geometry
+  group_by(continent) |> summarize()
+continents_sf
+```
+
+Read netcdf file
+
+```{r}
+nc_data <- ncdf4::nc_open(file.path("data", "raw", netcdf_file_name))
+vname <- "tempanomaly"
+fillvalue <- ncatt_get(nc_data, vname, "_FillValue")
+```
+
+Extract variables
+
+```{r}
+lon <- ncvar_get(nc_data,"lon")
+lat <- ncvar_get(nc_data,"lat")
+time <- ncvar_get(nc_data,"time")
+values <- ncvar_get(nc_data, vname)
+values1980 = values[,,1201:1735]
+```
+
+Close netcdf file
+
+```{r}
+nc_close(nc_data)
+```
+
+Replace netCDF fill values with NA's
+
+```{r}
+values[values==fillvalue$value] <- NA
+```
+
+Convert time variable to dates
+
+```{r}
+dates = as.Date(time, origin = '1800-01-01')
+length(dates)
+dates1980 = dates[dates>="1980-01-15"]
+dates1980
+length(dates1980)
+```
+
+Retrieve dimensions
+
+```{r}
+nlon <- dim(lon) # 180
+nlat <- dim(lat) # 90
+ndate = dim(dates1980) # 535
+```
+
+Convert values to single long vector
+
+```{r}
+values_vector <- as.vector(values1980)
+```
+
+Create matrix of lon, lat, and dates
+
+```{r}
+lon_lat_date_matrix <- matrix(NA, nrow = length(values_vector), ncol = 3)
+lon_lat_date_matrix <- as.matrix(expand.grid(lon,lat,dates1980))
+```
+
+Build data frame using lon/lat/date matrix and values vector
+
+```{r}
+df <- data.frame(cbind(lon_lat_date_matrix, values_vector))
+names(df) <- c("lon", "lat", "date", "anomaly")
+```
+
+Create monthly data frame
+
+```{r}
+monthly_df <- df |>
+  mutate(lon = as.integer(lon)) |>
+  mutate(lat = as.integer(lat)) |>
+  mutate(month = as.integer(str_sub(date,6,7))) |> 
+  mutate(year = as.integer(str_sub(date,1,4))) |> 
+  mutate(decade = as.integer(year - (year %% 10) + 10)) |>
+  mutate(anomaly = as.numeric(anomaly)) |>
+  filter(year>1980) |>
+  select(lon,lat,month,year,decade,anomaly)
+```
+
+Group into yearly and decadal data frames
+
+```{r}
+yearly_df <- monthly_df |>
+  group_by(lon, lat, year) |>
+  summarize(avg_anomaly = mean(anomaly))
+glimpse(yearly_df) #2332800
+
+decade_df <- monthly_df |>
+  group_by(lon, lat, decade) |>
+  summarize(avg_anomaly = mean(anomaly))
+glimpse(decade_df) #243000
+```
+
+Create spatial data frames
+
+```{r}
+yearly_sf <-
+  st_as_sf(yearly_df, coords = c('lon', 'lat'), crs =4326)
+decade_sf <- 
+  st_as_sf(decade_df, coords = c('lon', 'lat'), crs =4326)
+
+yearly_equal_area_sf <- st_transform(yearly_sf, crs=mollweide_crs)
+decade_equal_area_sf <- st_transform(decade_sf, crs=mollweide_crs)
+continents_equal_area_sf <- st_transform(continents_sf, crs=mollweide_crs)
+```
+
+Calculate grid polygon
+
+```{r}
+
+```
