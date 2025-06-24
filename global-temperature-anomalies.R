@@ -1,75 +1,17 @@
----
-title: "Global Temperature Anomaly Data Analysis (using R)"
-author: "Rick Forest"
-date: "`r Sys.Date()`" 
-toc: true
-number-sections: true
-format: 
-  html:
-    code-fold: false
-    code-tools: true
-    fig-width: 8
-    fig-asp: 0.618 
----
-
-**Objectives**
-
--   visualize global temperature anomaly data trends to reveal insights
--   assign climate periods and compare differences
--   identify frequency of temperatures greater than 1.5°C
-    -   the significance of 1.5 C is explained here: <https://www.ipcc.ch/sr15/>
--   show complete data analysis workflow using R
-
-**Data**
-
-This analyis will use the following surface temperature anomaly data (1880 until present): - Monthly average temperature anomalies - Global - Northern Hemisphere - Southern Hemisphere The data is retrieved from The NASA Goddard Institue for Space Studies website <https://data.giss.nasa.gov/gistemp/>
-
-**Process**
-
-This analyis will use these data analyis steps:
-
-```{mermaid}
-flowchart LR
-  A(Import) --> B(Tidy) --> C(Transform) --> D(Visualize)
-```
-
-The process used in this analysis has been learned from the book **"R for Data Science (2e)"**, written by Hadley Wickham, Mine Çetinkaya-Rundel, and Garrett Grolemund. <https://r4ds.hadley.nz>
-
-**Packages**
-
-```{r}
-#| label: packages
-#| echo: true
-#| warning: false
 
 library(tidyverse)
 library(ggthemes)
 library(viridis)
 library(paletteer)
 library(patchwork)
-```
 
-**Climate Periods**
-
-The World Meteorological Organization considers a thirty-year period to be the minimum required to calculate the average climate, known as a climate normal. These normals are updated every decade to reflect changes in the climate, with the most recent standard period being 1991-2020.
-
-```{r}
-#| label: climate-periods
-#| echo: true
 climate_periods_end <- c(1930,1960,1990,2020)
 climate_periods_start <- climate_periods_end - 30
 climate_periods = paste(
   as.character(climate_periods_start),"-",
   as.character(climate_periods_end))
 climate_periods
-```
 
-**Temperature Categories**
-
-```{r}
-#| label: temperature-categories
-#| echo: true
-#| 
 temperature_category_end <- c(0.0, 0.5, 1.0, 1.5, 2.0, 2.5)
 temperature_category_start <- c(-2.0, 0.0, 0.5, 1.0, 1.5, 2.0)
 temperature_categories = paste(
@@ -78,26 +20,11 @@ temperature_categories = paste(
 temperature_categories[1] <- " < 0"
 temperature_categories[6] <- " > 2"
 temperature_categories
-```
 
-# Import
-
-## Paths
-
-```{r}
-#| label: paths
-#| echo: true
 csv_url = "https://data.giss.nasa.gov/gistemp/tabledata_v4/"
 csv_file_names <- c("GLB.Ts+dSST.csv",
                     "NH.Ts+dSST.csv",
                     "SH.Ts+dSST.csv")
-```
-
-## Download
-
-```{r}
-#| label: download-files
-#| code-fold: true
 
 df_list <- list()
 skip_header_recs <- c(1, 1, 1)
@@ -115,25 +42,10 @@ for (i in 1:length(csv_file_names)) {
 global_raw_data <-df_list[[1]] 
 northern_raw_data <-df_list[[2]] 
 southern_raw_data <-df_list[[3]] 
-```
-
-## Results
-
-```{r}
-#| label: download-results
 
 glimpse(global_raw_data)
 glimpse(northern_raw_data)
 glimpse(southern_raw_data)
-```
-
-# Tidy
-
-## Function
-
-```{r}
-#| label: tidy-function
-#| code-fold: true
 
 fn_tidy <- function(df, pivot_cols, pivot_name) {
   sel_cols <- c("Year", pivot_cols)
@@ -146,13 +58,6 @@ fn_tidy <- function(df, pivot_cols, pivot_name) {
       values_drop_na = TRUE)
   return(dft)
 }
-```
-
-## Parameters
-
-```{r}
-#| label: pivot-parameters
-#| code-fold: true
 
 pivot_name <- "Month"
 pivot_cols <- colnames(global_raw_data[,2:13]) 
@@ -161,26 +66,9 @@ global_tidy_data <- fn_tidy(global_raw_data, pivot_cols, pivot_name)
 northern_tidy_data <- fn_tidy(northern_raw_data, pivot_cols, pivot_name)
 southern_tidy_data <- fn_tidy(southern_raw_data, pivot_cols, pivot_name)
 
-```
-
-## Results
-
-```{r}
-#| label: tidy-results
-
 glimpse(global_tidy_data)
 glimpse(northern_tidy_data)
 glimpse(southern_tidy_data)
-
-```
-
-# Transform
-
-## Identifiers
-
-```{r}
-#| label: identifiers
-#| echo: true
 
 month_codes <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
@@ -193,16 +81,6 @@ hemisphere_labels <- c("Southern", "Northern")
 
 latest_year <- global_tidy_data[[nrow(global_tidy_data),1]]
 decade_start <- latest_year- 10
-
-```
-
-## Functions
-
-**Add climate period function**
-
-```{r}
-#| label: add-climate-period
-#| code-fold: true
 
 fn_add_climate_period <- function(df,
                                   climate_periods_end,
@@ -221,13 +99,6 @@ fn_add_climate_period <- function(df,
                        labels=climate_periods)
   return(dfc)
 } 
-```
-
-**Add temperature categories function**
-
-```{r}
-#| label: add-temperature-categories
-#| code-fold: true
 
 fn_add_temperature_category <- function(df,
                                         temperature_categories_end,
@@ -247,13 +118,6 @@ fn_add_temperature_category <- function(df,
                        labels=temperature_categories)
   return(dftc)
 } 
-```
-
-**Add season function**
-
-```{r}
-#| label: add-season
-#| code-fold: true
 
 fn_add_season <- function(df) {
   dfs <- df |> 
@@ -277,13 +141,8 @@ fn_add_season <- function(df) {
                        levels=seasons)
   return(dfs)
 }
-```
 
-**Transform data function**
 
-```{r}
-#| label: transform-monthly
-#| code-fold: true
 fn_transform_monthly <- function(df, id) {
   dft <- df |> 
     filter(Year >= climate_periods_start[1]) |>
@@ -298,58 +157,24 @@ fn_transform_monthly <- function(df, id) {
     select(Identifier, ClimatePeriod, Decade, Year, Month, Anomaly, TemperatureCategory) 
   return(dftc)
 }
-```
-
-## Transform global data
-
-```{r}
-#| label: transform-global
-#| code-fold: true
 
 global_transformed_data <- fn_transform_monthly(global_tidy_data,id="G")
 global_transformed_data$Identifier <- 
   factor(global_transformed_data$Identifier, 
         levels=global_identifier,
         labels=global_label)
-```
 
-**Results**
 
-```{r}
-#| label: global-results
 glimpse(global_transformed_data)
-```
 
-## Transform hemisphere data
-
-```{r}
-#| label: transform-hemisphere
-#| code-fold: true
 
 northern_transformed_data <- fn_transform_monthly(northern_tidy_data,id="N")
 southern_transformed_data <- fn_transform_monthly(southern_tidy_data,id="S")
 
 hemisphere_transformed_data <- dplyr::bind_rows(northern_transformed_data, southern_transformed_data)
-
 hemisphere_transformed_data<- fn_add_season(hemisphere_transformed_data)
-```
-
-**Results**
-
-```{r}
-#| label: hemisphere-results
 
 glimpse(hemisphere_transformed_data)
-```
-
-# Visualize
-
-**Plot parameters**
-
-```{r}
-#| include: FALSE
-#| label: plot-parameters
-#| code-fold: true
 
 plot_transparency <- 0.9
 
@@ -357,14 +182,6 @@ scale_option <- "D"
 scale_direction <- -1
 scale_beg <- 0.2
 scale_end <- 1.0
-```
-
-## Overall Trend
-
-```{r}
-#| label: time-series-plots-1
-#| code-fold: true
-#| warning: false
 
 palette <- "pals::coolwarm"
 y_limits <- c(min(global_transformed_data$Anomaly),
@@ -420,20 +237,8 @@ time_series_plots_1 <- p1 + p2 + p3 +
   plot_annotation(title = plot_title)
 
 time_series_plots_1
-```
 
-## Climate Period
-
-```{r}
 plot_title <- "Global Monthly Average Temperature Anomaly by Climate Period"
-```
-
-Scatterplot with trend line per climate period
-
-```{r}
-#| label: climate-period-plot-0
-#| code-fold: true
-#| warning: false
 
 y_limits <- c(min(global_transformed_data$Anomaly),
               max(global_transformed_data$Anomaly))
@@ -450,14 +255,7 @@ p0 <- global_transformed_data |>
         scale_x_continuous(breaks = c(1900, 1930, 1960, 1990, 2020)) +
         scale_color_colorblind()
 p0
-```
 
-Frequency Distribution
-
-```{r}
-#| label: climate-period-plot-1
-#| code-fold: true
-#| warning: false
 
 climate_plot_1 <- global_transformed_data |>
      filter(complete.cases(ClimatePeriod)) |> 
@@ -472,14 +270,6 @@ climate_plot_1 <- global_transformed_data |>
         fill = "Climate Period")  +
          scale_fill_colorblind()
 climate_plot_1
-```
-
-Histogram
-
-```{r}
-#| label: climate-period-plot-2
-#| code-fold: true
-#| warning: false
 
 climate_plot_2 <- global_transformed_data |>
   filter(complete.cases(ClimatePeriod)) |> 
@@ -495,14 +285,6 @@ climate_plot_2 <- global_transformed_data |>
     fill = "Climate Period")  +
          scale_fill_colorblind()
 climate_plot_2
-```
-
-Boxplot
-
-```{r}
-#| label: climate-period-plot-3
-#| code-fold: true
-#| warning: false
 
 climate_plot_3 <- global_transformed_data |> 
       filter(complete.cases(ClimatePeriod)) |> 
@@ -517,14 +299,6 @@ climate_plot_3 <- global_transformed_data |>
           fill = "Climate") +
          scale_fill_colorblind()
 climate_plot_3
-```
-
-By Hemisphere
-
-```{r}
-#| label: climate-period-plot-4
-#| code-fold: true
-#| warning: false
 
 climate_plot_4 <- hemisphere_transformed_data  |> 
       filter(complete.cases(ClimatePeriod)) |> 
@@ -544,14 +318,7 @@ climate_plot_4 <- hemisphere_transformed_data  |>
         theme(axis.title.x = element_blank()) +
         theme(axis.ticks.x = element_blank())
 climate_plot_4
-```
 
-By Season
-
-```{r}
-#| label: climate-period-plot-5
-#| code-fold: true
-#| warning: false
 
 climate_plot_5 <- hemisphere_transformed_data  |> 
       filter(complete.cases(ClimatePeriod)) |> 
@@ -572,11 +339,7 @@ climate_plot_5 <- hemisphere_transformed_data  |>
         theme(axis.title.x = element_blank()) +
         theme(axis.ticks.x = element_blank())
 climate_plot_5
-```
 
-## Since 2020
-
-```{r}
 global_data_after_2020 <-
   global_transformed_data  |>
       filter(Year > 2020) 
@@ -586,12 +349,7 @@ hemisphere_data_after_2020 <-
       filter(Year > 2020) 
 
 year_labels <- c("2021", "2022", "2023", "2024", "2025")
-```
 
-```{r}
-#| label: 2021_2025_plot_1
-#| code-fold: true
-#| warning: false
 
 decade_plot_1 <- hemisphere_data_after_2020 |> 
        group_by(Hemisphere, Month) |>
@@ -611,21 +369,12 @@ decade_plot_1 <- hemisphere_data_after_2020 |>
                      direction = scale_direction,
                      discrete =TRUE)
 decade_plot_1
-```
 
-```{r}
 scale_option <- "D"
 scale_direction <- 1
 scale_beg <- 0.0
 scale_end <- 0.8
-```
 
-```{r}
-#| label: 2021_2025_plot_2
-#| code-fold: true
-#| fig-asp: 0.5
-#| warning: false
-#| 
 scale_option <- "D"
 scale_direction <- 1
 scale_beg <- 0.0
@@ -645,12 +394,7 @@ decade_plot_2 <- hemisphere_data_after_2020 |>
          scale_fill_colorblind() +
   theme(axis.title.x=element_blank())
 decade_plot_2
-```
 
-```{r}
-#| label: 2021_2025_plot_3
-#| code-fold: true
-#| warning: false 
 plot_data <- global_transformed_data  |>
       filter(Year > 2020) |>
       filter(Anomaly >= 1.0)|>
@@ -668,12 +412,7 @@ decade_plot_3 <- plot_data |>
    scale_y_continuous(breaks = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))+
    coord_cartesian(ylim = c(0,12))
 decade_plot_3
-```
 
-```{r}
-#| label: 2021_2025_plot_4
-#| code-fold: true
-#| warning: false
 plot_data <- hemisphere_transformed_data  |>
       filter(Year > 2020) |>
       filter(Anomaly >= 1.5)|>
@@ -691,12 +430,7 @@ decade_plot_4 <- plot_data |>
    scale_y_continuous(breaks = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)) +
    coord_cartesian(ylim = c(0,12))
 decade_plot_4
-```
 
-```{r}
-#| label: 2021_2025_plot_5
-#| code-fold: true
-#| warning: false
 plot_data <- hemisphere_transformed_data  |>
       filter(Year > 2020) |>
       filter(Anomaly >= 1.5) |>
@@ -714,16 +448,3 @@ decade_plot_5 <- plot_data |>
    scale_y_continuous(breaks = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)) +
    coord_cartesian(ylim = c(0,12))
 decade_plot_5
-```
-
-To Do:
-
-Add insight after plots
-
-modify plots: try different color scheme on freq distribution, try alpha = 0.5
-
-new plots:
-
-most recent climate period
-
-bar chart by temperature category plot with global, northern and southern lines regression line by climate period
